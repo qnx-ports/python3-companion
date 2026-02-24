@@ -1,0 +1,63 @@
+# Maintainer: Leo Shen <yishen@qnx.com>
+pkgname=python3
+pkgver=3.14.0
+_basever=${pkgver%.*}
+pkgrel=1
+pkgdesc="High-level scripting language"
+url="https://www.python.org/"
+arch="all"
+depends="sqlite zlib-ng xz-libs readline libffi expat bzip2 lz4 libssl3 libcrypto3 ncurses qnx-io-sock"
+depends_dev="$pkgname=$pkgver-r$pkgrel sqlite-dev zlib-ng-dev xz-dev readline-dev libffi-dev expat-dev bzip2-dev lz4-dev openssl-dev ncurses-dev qnx-crypto-dev qnx-io-sock-dev"
+makedepends="$depends_dev make pkgconf pkgconf-dev"
+license="PSF-2.0"
+provides="python"
+subpackages="$pkgname-doc $pkgname-dev $pkgname-tests::noarch"
+source="https://www.python.org/ftp/python/$pkgver/Python-$pkgver.tar.xz
+fix-qnx-python.patch
+EXTERNALLY-MANAGED
+"
+builddir="$srcdir/Python-$pkgver"
+
+build() {
+   if [[ $CBUILD = $CHOST ]]; then
+        # Compile natively
+        echo "No additional arguments are required"
+    else
+        # Cross compiling
+        echo "This is can not be cross-compiled"
+        exit 1;
+    fi
+
+   ./configure \
+        --build=$CBUILD \
+        --host=$CHOST \
+        --prefix=/usr \
+        --enable-loadable-sqlite-extensions \
+        --without-ensurepip \
+        --with-system-expat \
+        --enable-shared \
+        CFLAGS="-D_QNX_SOURCE -O2 -fPIC -DTHREAD_STACK_SIZE=8388608" \
+        LDFLAGS="-lsocket -lm -lgcc_s -lregex"
+
+    make
+}
+
+package() {
+    make DESTDIR="$pkgdir" install 
+    msg "Python basever $_basever"
+    ln -s python3 "$pkgdir"/usr/bin/python
+    install -Dm644 "$srcdir"/EXTERNALLY-MANAGED \
+        "$pkgdir"/usr/lib/python$_basever/EXTERNALLY-MANAGED
+}
+
+tests() {
+    pkgdesc="The test modules from the main python package"
+
+    amove usr/lib/python$_basever/test
+}
+
+sha512sums="
+46e9e205c3a084cba68bf7f267ab2fd0862a05430165e0eb713f2d6b3a1a4452f72f563de5de55caea824be9df56f66dd568f4814941667a9bb0954229772c53  Python-3.14.0.tar.xz
+403f8b275ab658bbc3f75c8e51754efda416d5c944aaab5ee8d19d3b8a8da1e29865aaa0e5e61e1709cb1298bc20aa1971ce986bce3179b8e1e167ad4742f203  fix-qnx-python.patch
+48c2b2c42c8cd8f1071f75149556648a6bdf756a9946a6760de0eadeee9ae53c08b5a2dc9d131a8f7b734128386fd4ae7d71cdbdb53dadbd00443bfafd33639b  EXTERNALLY-MANAGED
+"
